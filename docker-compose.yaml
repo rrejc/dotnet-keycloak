@@ -1,0 +1,36 @@
+services:
+  database:
+    image: postgres:17.6-trixie
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - 5432:5432
+    volumes:
+      - ./scripts/init-keycloak-db.sh:/docker-entrypoint-initdb.d/init-keycloak-db.sh:Z
+      - test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 2s
+      retries: 5
+      
+  keycloak:
+    image: keycloak/keycloak:26.3
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://database:5432/keycloak_db
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - 8080:8080
+    depends_on:
+      database:
+        condition: service_healthy
+    command: start-dev # Explicitly start in dev mode to skip HTTPS
+    
+volumes:
+  test_data:
+    name: test_data
